@@ -131,21 +131,37 @@ clean() {
 
 # Function to build kernel
 build_kernel() {
-  echo "${GREEN}***** Compiling kernel *****${NC}"
+  variant
+  echo -e "${BGREEN}***** Compiling kernel *****${NC}"
   [ ! -d "${OUT}" ] && mkdir ${OUT}
   make -j$(nproc) -C $(pwd) ${KERNEL_MAKE_ENV} CROSS_COMPILE=${CROSS_COMPILE} $DEFCONFIG
   make -j$(nproc) -C $(pwd) ${KERNEL_MAKE_ENV} CROSS_COMPILE=${CROSS_COMPILE}
 
-  [ -e arch/arm64/boot/Image.gz ] && cp arch/arm64/boot/Image.gz ${OUT}/Image.gz
-  if [ -e arch/arm64/boot/Image ]; then
+  # Check for different kernel image formats
+  if [ -e arch/arm64/boot/Image.gz ]; then
+    cp arch/arm64/boot/Image.gz ${OUT}/Image.gz
+    echo -e "${GREEN}Kernel Image.gz found and copied!${NC}"
+  elif [ -e arch/arm64/boot/Image ]; then
     cp arch/arm64/boot/Image ${OUT}/Image
-    echo "${GREEN}***** Kernel build complete *****${NC}"
-    pause 'continue'
+    echo -e "${GREEN}Kernel Image found and copied!${NC}"
+  elif [ -e arch/arm64/boot/zImage ]; then
+    cp arch/arm64/boot/zImage ${OUT}/zImage
+    echo -e "${GREEN}Kernel zImage found and copied!${NC}"
+  elif [ -e arch/arm64/boot/Image.gz-dtb ]; then
+    cp arch/arm64/boot/Image.gz-dtb ${OUT}/Image.gz-dtb
+    echo -e "${GREEN}Kernel Image.gz-dtb found and copied!${NC}"
   else
-    pause 'return to Main menu' 'Kernel build failed!'
+    echo -e "${RED}No recognized kernel image format found!${NC}"
+    pause 'return to Main menu'
+    main
+    return
   fi
+
+  echo -e "${BGREEN}***** Kernel build complete! *****${NC}"
+  pause 'continue'
   main
 }
+
 
 # Function to build dtbo.img
 build_dtbo() {
@@ -192,23 +208,33 @@ main
 
 # Function to build boot image with AIK-Linux
 build_boot_img() {
-  if [ ! -d ${TOOLS}/AIK-LINUX ]; then
-    echo "${RED}Cloning AIK-Linux...${NC}"
-    git clone https://github.com/osm0sis/AIK-Linux ${TOOLS}/AIK-LINUX
-    chmod +x ${TOOLS}/AIK-LINUX/*
+  git clone https://github.com/osm0sis/Android-Image-Kitchen.git $TOOLS/AIK-LINUX
+  cp $STOCK_BOOT $AIK
+  cd $AIK
+  chmod 755 *
+  ./unpackimg.sh boot.img
+
+  # Handle different kernel image formats
+  if [ -e ${K_DIR}/arch/arm64/boot/Image ]; then
+    cp $K_DIR/arch/arm64/boot/Image split_image/boot.img-kernel
+  elif [ -e ${K_DIR}/arch/arm64/boot/zImage ]; then
+    cp $K_DIR/arch/arm64/boot/zImage split_image/boot.img-kernel
+  elif [ -e ${K_DIR}/arch/arm64/boot/Image.gz-dtb ]; then
+    cp $K_DIR/arch/arm64/boot/Image.gz-dtb split_image/boot.img-kernel
+  else
+    echo -e "${RED}No recognized kernel image format found for boot image!${NC}"
+    pause 'return to Main menu'
+    main
+    return
   fi
 
-  if [ -e ${K_DIR}/arch/arm64/boot/Image.gz ]; then
-    cd ${TOOLS}/AIK-LINUX
-    ./repackimg.sh
-    cp image-new.img ${OUT}/boot.img
-    echo "${GREEN}***** Boot image created successfully *****${NC}"
-    pause 'continue'
-  else
-    pause 'return to Main menu' 'Build kernel first!'
-  fi
-main
+  ./repackimg.sh
+  ./cleanup.sh
+  echo -e "${GREEN}Boot image built successfully with AIK-Linux!${NC}"
+  pause 'continue'
+  main
 }
+
 
 # Main function to display menu
 main() {
