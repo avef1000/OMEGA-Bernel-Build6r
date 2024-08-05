@@ -25,7 +25,7 @@ TOOLS="${K_DIR}/toys"
 AIK="${TOOLS}/AIK-LINUX"
 STOCK_BOOT="${K_DIR}/stock-boot/*"
 DTBTOOL="${TOOLS}/dtb/mkdtboimg.py"
-DTB_DIR="${K_DIR}/arch/arm64/boot/dts/*/*/"
+DTB_DIR="${K_DIR}/arch/arm64/boot/dts/*/*/*.dtbo"
 OUT="${K_DIR}/output"
 export K_DIR TOOLCHAIN TOOLS AIK STOCK_BOOT DTBTOOL DTB_DIR OUT
 export PLATFORM_VERSION= # please fill in
